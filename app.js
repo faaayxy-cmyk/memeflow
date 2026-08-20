@@ -15,8 +15,62 @@ if (tg) {
   try { tg.setHeaderColor('#FFFFFF'); tg.setBackgroundColor('#F7F7F7'); } catch {}
 }
 
+// ─── TON Connect Wallet ───────────────────────────────────────────────────────
+let tonConnectUI = null;
+let userWallet = null;
+
+async function initTONConnect() {
+  try {
+    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+      manifestUrl: 'https://raw.githubusercontent.com/ton-community/tutorials/main/03-client/test/public/tonconnect-manifest.json',
+      buttonRootId: 'ton-connect-button'
+    });
+
+    tonConnectUI.onStatusChange(async (wallet) => {
+      if (wallet) {
+        userWallet = wallet;
+        console.log('[TON] Wallet connected:', wallet.account.address);
+        await loadTONBalance(wallet.account.address);
+      } else {
+        userWallet = null;
+        console.log('[TON] Wallet disconnected');
+      }
+    });
+
+    const currentWallet = tonConnectUI.wallet;
+    if (currentWallet) {
+      userWallet = currentWallet;
+      await loadTONBalance(currentWallet.account.address);
+    }
+  } catch (error) {
+    console.error('[TON] Init error:', error);
+  }
+}
+
+async function loadTONBalance(address) {
+  try {
+    const response = await fetch(`https://tonapi.io/v2/accounts/${address}`);
+    const data = await response.json();
+    const balance = (data.balance / 1e9).toFixed(2);
+    console.log('[TON] Balance:', balance, 'TON');
+    
+    // Можно обновить UI баланса здесь
+    const balanceEl = document.getElementById('profileBalanceAmount');
+    if (balanceEl) {
+      balanceEl.textContent = `${balance} TON`;
+    }
+  } catch (error) {
+    console.error('[TON] Balance error:', error);
+  }
+}
+
+// Экспортируем для использования в других модулях
+window.tonConnectUI = tonConnectUI;
+window.userWallet = userWallet;
+
 // ─── Настройки ────────────────────────────────────────────────────────────────
 initSettings();
+initTONConnect();
 
 // ─── Навигация ────────────────────────────────────────────────────────────────
 const navBtns = document.querySelectorAll('.nav-btn');
