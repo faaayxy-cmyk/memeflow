@@ -18,33 +18,6 @@ if (tg) {
 // ─── Настройки ────────────────────────────────────────────────────────────────
 initSettings();
 
-// ─── Загрузочный экран ────────────────────────────────────────────────────────
-const loadingEl = document.getElementById('loading');
-const mainEl    = document.getElementById('main');
-const startedAt = Date.now();
-
-function revealApp() {
-  const wait = Math.max(0, 100 - (Date.now() - startedAt)); // Быстрая загрузка
-  setTimeout(() => {
-    loadingEl.classList.add('is-leaving');
-    setTimeout(() => {
-      loadingEl.style.display = 'none';
-      mainEl.classList.add('is-visible');
-    }, 500);
-  }, wait);
-}
-
-// Триггеры для показа app
-window.addEventListener('load', revealApp);
-if (document.readyState === 'complete') revealApp();
-
-// Fallback: если ничего не произошло за 3 сек - форсируем показ
-setTimeout(() => {
-  if (loadingEl && loadingEl.style.display !== 'none') {
-    revealApp();
-  }
-}, 3000);
-
 // ─── Навигация ────────────────────────────────────────────────────────────────
 const navBtns = document.querySelectorAll('.nav-btn');
 const pages   = document.querySelectorAll('.page');
