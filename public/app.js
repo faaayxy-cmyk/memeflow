@@ -1,4 +1,4 @@
-// ===== MEMIX — главный модуль =====
+// ===== MemeFlow — главный модуль =====
 import { initCatalog, renderCoinModal, initChart } from './catalog.js?v=18';
 import { initSwap } from './swap.js?v=16';
 import { initProfile } from './profile.js?v=15';

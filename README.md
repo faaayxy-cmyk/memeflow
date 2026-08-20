@@ -1,6 +1,6 @@
-# MEMIX
+# MemeFlow
 
-Crypto Meme Tracker with AI-powered analysis.
+Track meme coins with AI-powered insights.
 
 ## Features
 - 📊 Real-time meme coin tracking
@@ -10,9 +10,6 @@ Crypto Meme Tracker with AI-powered analysis.
 
 ## Tech Stack
 - Vanilla JavaScript
-- Express.js backend
-- Groq AI API
+- Express.js
+- Groq AI
 - CoinGecko API
-
-## Deploy
-- Frontend & Backend: Vercel

@@ -1,7 +1,7 @@
 {
-  "name": "memix",
+  "name": "memeflow",
   "version": "1.0.0",
-  "description": "MEMIX — Crypto Meme Tracker with AI",
+  "description": "MemeFlow — Crypto Meme Tracker with AI",
   "type": "module",
   "main": "server.js",
   "scripts": {
