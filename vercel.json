@@ -1,4 +1,7 @@
 {
-  "buildCommand": "echo 'Static site'",
-  "outputDirectory": "public"
+  "version": 2,
+  "public": true,
+  "github": {
+    "silent": true
+  }
 }
