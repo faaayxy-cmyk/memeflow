@@ -1,5 +1,4 @@
 // profile.js — профиль пользователя и история транзакций
-import { getWallet, getWalletTokens, getSolBalance, getTokenPrices, updateTokenPrices } from './wallet.js?v=15';
 import { t } from './settings.js?v=15';
 
 const RPC_URL = 'https://api.mainnet-beta.solana.com';

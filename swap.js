@@ -1,6 +1,5 @@
 // swap.js — кросс-чейн свап TON ↔ SOL через Symbiosis API с комиссией
 
-import { getWallet, sendTonTransaction, getTonBalance } from './wallet.js?v=16';
 import { t } from './settings.js?v=5';
 
 // Chain IDs в Symbiosis
@@ -336,8 +335,6 @@ function tokenPickerModal(current) {
 
     function renderTokenList(query) {
       listEl.innerHTML = '';
-      const wallet = getWallet();
-      const tonBal = getTonBalance();
 
       const filtered = POPULAR_TOKENS.filter(t =>
         t.symbol.toLowerCase().includes(query.toLowerCase()) ||
@@ -345,12 +342,6 @@ function tokenPickerModal(current) {
       );
 
       filtered.forEach(t => {
-        // Показываем баланс TON
-        let balance = null;
-        if (wallet && t.chain === 'ton' && t.address === 'native') {
-          balance = tonBal ? `${tonBal.toFixed(4)} TON` : null;
-        }
-
         const card = document.createElement('div');
         card.className = 'coin-card';
         card.style.cursor = 'pointer';
@@ -366,7 +357,6 @@ function tokenPickerModal(current) {
             <div class="coin-chain">${t.symbol} • ${t.chain.toUpperCase()}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            ${balance ? `<div style="font-size:13px;font-weight:600;font-family:var(--mono)">${balance}</div>` : ''}
             ${t.symbol === current.symbol && t.chain === current.chain ? '<div style="color:var(--orange);font-size:13px;font-weight:700">✓</div>' : ''}
           </div>
         `;

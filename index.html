@@ -10,9 +10,112 @@
 </head>
 <body>
 <div id="app">
-
-  <!-- ══ ГЛАВНЫЙ ЭКРАН ══════════════════════════════════════════════════════ -->
   <div id="main" class="screen" style="display:block">
+    <header class="top-bar">
+      <div class="logo-row">
+        <div class="logo-icon">
+          <img src="logo-new.svg" alt="MemeFlow" />
+        </div>
+        <span class="logo-text">MemeFlow</span>
+      </div>
+      <div id="ton-connect-button"></div>
+    </header>
+
+    <div class="page-content" id="pageContent">
+      <div class="page active" id="pageCatalog">
+        <div class="section-tabs">
+          <button class="tab-btn active" data-tab="trending">Trending</button>
+          <button class="tab-btn" data-tab="new">New</button>
+        </div>
+        <div class="coins-list" id="coinsList">
+          <div style="padding:40px;text-align:center;color:#999">
+            Loading tokens...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-page="pageCatalog">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="13" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span>Catalog</span>
+      </button>
+    </nav>
+  </div>
+</div>
+<script>
+// Simple TON Connect initialization
+let tonConnectUI = null;
+
+async function init() {
+  try {
+    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+      manifestUrl: 'https://raw.githubusercontent.com/ton-community/tutorials/main/03-client/test/public/tonconnect-manifest.json',
+      buttonRootId: 'ton-connect-button'
+    });
+
+    tonConnectUI.onStatusChange(async (wallet) => {
+      if (wallet) {
+        console.log('Wallet connected:', wallet.account.address);
+      } else {
+        console.log('Wallet disconnected');
+      }
+    });
+  } catch (e) {
+    console.error('TON Connect error:', e);
+  }
+
+  // Load tokens
+  loadTokens();
+}
+
+async function loadTokens() {
+  const listEl = document.getElementById('coinsList');
+  
+  try {
+    const response = await fetch('/api/coins/trending');
+    const data = await response.json();
+    
+    if (!data.pairs || data.pairs.length === 0) {
+      listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#999">No tokens found</div>';
+      return;
+    }
+
+    let html = '';
+    for (const pair of data.pairs.slice(0, 20)) {
+      const change = parseFloat(pair.priceChange?.h24 || 0);
+      const changeClass = change >= 0 ? 'up' : 'down';
+      const changeSign = change >= 0 ? '+' : '';
+      
+      html += `
+        <div class="coin-card">
+          <div class="coin-logo-wrap">
+            <div class="coin-logo-placeholder">${pair.baseToken?.symbol?.charAt(0) || '?'}</div>
+          </div>
+          <div class="coin-info">
+            <div class="coin-name">${pair.baseToken?.name || 'Unknown'}</div>
+            <div class="coin-chain">${pair.baseToken?.symbol || '???'}</div>
+          </div>
+          <div class="coin-price">
+            <div class="coin-price-val">$${parseFloat(pair.priceUsd || 0).toFixed(6)}</div>
+            <div class="coin-change ${changeClass}">${changeSign}${change.toFixed(2)}%</div>
+          </div>
+        </div>
+      `;
+    }
+    
+    listEl.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Load tokens error:', error);
+    listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#DC2626">Failed to load tokens</div>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
 
     <!-- Хедер -->
     <header class="top-bar">

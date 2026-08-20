@@ -22,7 +22,7 @@ let userWallet = null;
 async function initTONConnect() {
   try {
     tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-      manifestUrl: 'https://raw.githubusercontent.com/ton-community/tutorials/main/03-client/test/public/tonconnect-manifest.json',
+      manifestUrl: 'https://memeflow.vercel.app/tonconnect-manifest.json',
       buttonRootId: 'ton-connect-button'
     });
 

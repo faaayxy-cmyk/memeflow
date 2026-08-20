@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MemeFlow</title>
+<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, sans-serif; background: #F7F7F7; }
+.header { background: #fff; padding: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #E8E8E8; }
+.logo { font-size: 20px; font-weight: 700; color: #FF6B1A; }
+.content { padding: 20px; }
+.token-list { display: flex; flex-direction: column; gap: 12px; }
+.token-item { background: #fff; padding: 16px; border-radius: 12px; display: flex; gap: 12px; align-items: center; }
+.token-icon { width: 44px; height: 44px; border-radius: 50%; background: #F7F7F7; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.token-info { flex: 1; }
+.token-name { font-weight: 600; margin-bottom: 4px; }
+.token-symbol { font-size: 13px; color: #999; }
+.token-price { text-align: right; }
+.token-amount { font-weight: 600; margin-bottom: 4px; }
+.token-change { font-size: 13px; }
+.token-change.up { color: #16A34A; }
+.token-change.down { color: #DC2626; }
+.loader { text-align: center; padding: 40px; color: #999; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">MemeFlow</div>
+    <div id="ton-connect"></div>
+  </div>
+
+  <div class="content">
+    <div id="tokens" class="token-list">
+      <div class="loader">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    let tonUI = null;
+
+    async function init() {
+      // TON Connect
+      try {
+        tonUI = new TON_CONNECT_UI.TonConnectUI({
+          manifestUrl: 'https://raw.githubusercontent.com/ton-community/tutorials/main/03-client/test/public/tonconnect-manifest.json',
+          buttonRootId: 'ton-connect'
+        });
+
+        tonUI.onStatusChange((wallet) => {
+          console.log(wallet ? 'Connected' : 'Disconnected');
+        });
+      } catch (e) {
+        console.error(e);
+      }
+
+      // Load tokens
+      const tokensEl = document.getElementById('tokens');
+      
+      try {
+        const res = await fetch('/api/coins/trending');
+        const data = await res.json();
+        
+        if (!data.pairs) {
+          tokensEl.innerHTML = '<div class="loader">No data</div>';
+          return;
+        }
+
+        let html = '';
+        data.pairs.slice(0, 20).forEach(p => {
+          const change = parseFloat(p.priceChange?.h24 || 0);
+          const cls = change >= 0 ? 'up' : 'down';
+          const sign = change >= 0 ? '+' : '';
+          
+          html += `
+            <div class="token-item">
+              <div class="token-icon">${p.baseToken?.symbol?.charAt(0) || '?'}</div>
+              <div class="token-info">
+                <div class="token-name">${p.baseToken?.name || 'Unknown'}</div>
+                <div class="token-symbol">${p.baseToken?.symbol || '???'}</div>
+              </div>
+              <div class="token-price">
+                <div class="token-amount">$${parseFloat(p.priceUsd || 0).toFixed(6)}</div>
+                <div class="token-change ${cls}">${sign}${change.toFixed(2)}%</div>
+              </div>
+            </div>
+          `;
+        });
+        
+        tokensEl.innerHTML = html;
+      } catch (e) {
+        console.error(e);
+        tokensEl.innerHTML = '<div class="loader">Error loading</div>';
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
