@@ -153,8 +153,9 @@ function fmtPct(p) {
   if (p == null) return null;
   const num = Number(p);
   
-  // Санитизация: если >1000% или <-99% - это ошибка в данных, показываем 0
-  if (Math.abs(num) > 1000) {
+  // Агрессивная санитизация: любые нереалистичные проценты = 0%
+  // Нормальный диапазон для мем-коинов: -99% до +200%
+  if (num > 200 || num < -99 || isNaN(num)) {
     return '0.00%';
   }
   
@@ -302,7 +303,8 @@ export function initCatalog(onCoinClick) {
 // ─── Модальное окно монеты ────────────────────────────────────────────────────
 export function renderCoinModal(pair) {
   currentCoin = pair;
-
+  window.lastSelectedPair = pair; // Сохраняем для window.toggleWatchlist и других функций
+  
   const logo   = getTokenLogo(pair);
   const symbol = pair.baseToken?.symbol || '?';
   const name   = pair.baseToken?.name   || symbol;
@@ -341,6 +343,7 @@ export function renderCoinModal(pair) {
       <button class="chart-tab-btn" data-res="240">4H</button>
       <button class="chart-tab-btn active" data-res="1440">1D</button>
       <button class="chart-tab-btn" data-res="0">ALL</button>
+      <button class="chart-tab-btn" id="fullscreenChartBtn" style="margin-left:auto;background:var(--orange);color:#fff;border-color:var(--orange)" title="Развернуть график">⛶</button>
     </div>
     <div id="chartContainer" style="height:300px;border-radius:12px;overflow:hidden;margin-bottom:16px;background:rgba(255,138,61,.03);border:1px solid rgba(255,138,61,.12)">
       <div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--ink-500);font-size:13px">${t('loading') || '⏳'}</div>
@@ -389,26 +392,30 @@ export function renderCoinModal(pair) {
 }
 
 // ─── График — Canvas ──────────────────────────────────────────────────────────
-export async function initChart(pair) {
-  const container = document.getElementById('chartContainer');
+export async function initChart(pair, containerElement = null, isFullscreen = false, initialResolution = 1440) {
+  const container = containerElement || document.getElementById('chartContainer');
   if (!container) return;
 
   const chain    = pair.chainId    || 'solana';
   const pairAddr = pair.pairAddress || '';
 
-  // Сбрасываем стили от предыдущей версии с iframe
-  container.style.cssText = 'height:300px;border-radius:12px;overflow:hidden;margin-bottom:16px;background:rgba(255,138,61,.03);border:1px solid rgba(255,138,61,.12)';
+  // Устанавливаем размеры в зависимости от режима
+  if (isFullscreen) {
+    container.style.cssText = 'width:100%;height:100%;overflow:hidden;background:transparent';
+  } else {
+    container.style.cssText = 'height:300px;border-radius:12px;overflow:hidden;margin-bottom:16px;background:rgba(255,138,61,.03);border:1px solid rgba(255,138,61,.12)';
+  }
 
   if (!pairAddr) { noDataFallback(container, pair); return; }
 
   // Показываем кнопки таймфрейма
   const tabsEl = document.getElementById('chartTabsOld');
-  if (tabsEl) tabsEl.style.display = 'flex';
+  if (tabsEl && !isFullscreen) tabsEl.style.display = 'flex';
 
   let allCandles = {}; // кеш по таймфрейму
   let abortCtrl  = null;
 
-  async function load(resolution) {
+  async function load(resolution = initialResolution) {
     if (abortCtrl) abortCtrl.abort();
     abortCtrl = new AbortController();
 
@@ -418,26 +425,32 @@ export async function initChart(pair) {
     </div>`;
 
     if (allCandles[resolution]) {
-      drawCanvas(container, allCandles[resolution]);
+      drawCanvas(container, allCandles[resolution], isFullscreen);
       return;
     }
 
     try {
       let data = null;
-      let retries = 3;
+      let retries = 5; // Увеличил с 3 до 5
       
       // Retry логика
       while (retries > 0) {
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15сек timeout
+          
           const r = await fetch(
             `/api/candles/${encodeURIComponent(pairAddr)}?chain=${encodeURIComponent(chain)}&res=${resolution}`,
-            { signal: abortCtrl.signal, timeout: 10000 }
+            { signal: controller.signal }
           );
           
+          clearTimeout(timeoutId);
+          
           if (!r.ok) {
+            console.warn(`[Chart] HTTP ${r.status}, retries left: ${retries - 1}`);
             retries--;
             if (retries > 0) {
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Ждём 1сек перед retry
+              await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
               continue;
             }
             throw new Error(`HTTP ${r.status}`);
@@ -446,9 +459,12 @@ export async function initChart(pair) {
           data = await r.json();
           break; // Успешно загрузили
         } catch (e) {
+          if (e.name === 'AbortError') {
+            console.warn('[Chart] Request timeout');
+          }
           retries--;
           if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 500));
           } else {
             throw e;
           }
@@ -463,13 +479,17 @@ export async function initChart(pair) {
           const a = Array.isArray(item) ? item : String(item).trim().split(/\s+/);
           return { t: +a[0], o: +a[1], h: +a[2], l: +a[3], c: +a[4] };
         })
-        .filter(c => c.t && c.h > 0 && c.o > 0)
+        .filter(c => c.t && c.h > 0 && c.o > 0 && !isNaN(c.t))
         .sort((a, b) => a.t - b.t);
 
-      if (!candles.length) { noDataFallback(container, pair); return; }
+      if (!candles.length) { 
+        console.warn('[Chart] No valid candles for resolution:', resolution);
+        noDataFallback(container, pair); 
+        return; 
+      }
 
       allCandles[resolution] = candles;
-      drawCanvas(container, candles);
+      drawCanvas(container, candles, isFullscreen);
     } catch (e) {
       if (e.name === 'AbortError') return;
       console.error('[Chart] Loading error:', e);
@@ -496,11 +516,11 @@ export async function initChart(pair) {
   }
 }
 
-function drawCanvas(container, candles) {
+function drawCanvas(container, candles, isFullscreen = false) {
   container.innerHTML = '';
   const n   = candles.length;
-  const W   = container.clientWidth  || 340;
-  const H   = container.clientHeight || 300;
+  const W   = container.clientWidth  || (isFullscreen ? window.innerWidth * 0.96 : 340);
+  const H   = container.clientHeight || (isFullscreen ? window.innerHeight * 0.8 : 300);
   const DPR = window.devicePixelRatio || 1;
   const PAD = { top: 20, right: 14, bottom: 34, left: 74 };
   const CW  = W - PAD.left - PAD.right;
@@ -648,6 +668,38 @@ function drawCanvas(container, candles) {
     gap = Math.max(1, Math.round(cw * 0.25));
     clamp(); draw();
   }, { passive: false });
+
+  // Pinch zoom для мобильных
+  let initialDistance = 0;
+  let initialCw = cw;
+  
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      initialDistance = Math.sqrt(dx * dx + dy * dy);
+      initialCw = cw;
+    }
+  }, { passive: true });
+
+  wrap.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && initialDistance > 0) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const scale = distance / initialDistance;
+      
+      cw = Math.max(2, Math.min(40, initialCw * scale));
+      gap = Math.max(1, Math.round(cw * 0.25));
+      clamp(); draw();
+    }
+  }, { passive: true });
+
+  wrap.addEventListener('touchend', e => {
+    if (e.touches.length < 2) {
+      initialDistance = 0;
+    }
+  }, { passive: true });
 
   // Hover tooltip
   wrap.addEventListener('mousemove', e => {
