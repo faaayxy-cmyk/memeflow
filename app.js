@@ -24,7 +24,7 @@ const mainEl    = document.getElementById('main');
 const startedAt = Date.now();
 
 function revealApp() {
-  const wait = Math.max(0, 800 - (Date.now() - startedAt)); // Уменьшили с 1400 до 800ms
+  const wait = Math.max(0, 100 - (Date.now() - startedAt)); // Быстрая загрузка
   setTimeout(() => {
     loadingEl.classList.add('is-leaving');
     setTimeout(() => {
