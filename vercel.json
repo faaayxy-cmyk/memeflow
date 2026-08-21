@@ -9,10 +9,19 @@
   "routes": [
     {
       "src": "/tonconnect-manifest.json",
-      "dest": "/tonconnect-manifest.json",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Content-Type": "application/json"
+      }
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/(.*\\.(js|css|svg|png|jpg|jpeg|gif|webp|ico))",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
       }
     },
     {
